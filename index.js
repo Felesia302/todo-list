@@ -1,9 +1,15 @@
-﻿function createElement(tag, attributes, children) {
+﻿function createElement(tag, attributes, children, callbacks) {
   const element = document.createElement(tag);
 
   if (attributes) {
     Object.keys(attributes).forEach((key) => {
       element.setAttribute(key, attributes[key]);
+    });
+  }
+
+  if (callbacks) {
+    Object.keys(callbacks).forEach((eventName) => {
+      element.addEventListener(eventName, callbacks[eventName]);
     });
   }
 
@@ -35,7 +41,40 @@ class Component {
 }
 
 class TodoList extends Component {
+  constructor() {
+    super();
+    this.state = {
+      inputValue: "", 
+      tasks: [
+        { text: "Сделать домашку", completed: false },
+        { text: "Сделать практику", completed: false },
+        { text: "Пойти домой", completed: false }
+      ]
+    };
+  }
+
+  onAddInputChange = (event) => {
+    this.state.inputValue = event.target.value;
+  };
+
+  onAddTask = () => {
+    if (this.state.inputValue.trim() !== "") {
+      this.state.tasks.push({ text: this.state.inputValue, completed: false });
+      this.state.inputValue = "";
+
+      console.log("Новый стейт:", this.state.tasks); 
+    }
+  };
+
   render() {
+    const taskElements = this.state.tasks.map(task => {
+      return createElement("li", {}, [
+        createElement("input", { type: "checkbox" }),
+        createElement("label", {}, task.text),
+        createElement("button", {}, "🗑️")
+      ]);
+    });
+
     return createElement("div", { class: "todo-list" }, [
       createElement("h1", {}, "TODO List"),
       createElement("div", { class: "add-todo" }, [
@@ -43,26 +82,11 @@ class TodoList extends Component {
           id: "new-todo",
           type: "text",
           placeholder: "Задание",
-        }),
-        createElement("button", { id: "add-btn" }, "+"),
+        }, null, { input: this.onAddInputChange }), 
+
+        createElement("button", { id: "add-btn" }, "+", { click: this.onAddTask }), 
       ]),
-      createElement("ul", { id: "todos" }, [
-        createElement("li", {}, [
-          createElement("input", { type: "checkbox" }),
-          createElement("label", {}, "Сделать домашку"),
-          createElement("button", {}, "🗑️")
-        ]),
-        createElement("li", {}, [
-          createElement("input", { type: "checkbox" }),
-          createElement("label", {}, "Сделать практику"),
-          createElement("button", {}, "🗑️")
-        ]),
-        createElement("li", {}, [
-          createElement("input", { type: "checkbox" }),
-          createElement("label", {}, "Пойти домой"),
-          createElement("button", {}, "🗑️")
-        ]),
-      ]),
+      createElement("ul", { id: "todos" }, taskElements),
     ]);
   }
 }
