@@ -36,10 +36,13 @@
 
 class Component {
     constructor() {
+        this._childComponents = new Map();
     }
 
     getDomNode() {
-        this._domNode = this.render();
+        if (!this._domNode) {
+            this._domNode = this.render();
+        }
         return this._domNode;
     }
 
@@ -50,6 +53,18 @@ class Component {
             this._domNode = newNode;
         }
     }
+
+    getChildComponent(key, ComponentClass, ...args) {
+        if (!this._childComponents.has(key)) {
+            this._childComponents.set(key, new ComponentClass(...args));
+        } else {
+            const component = this._childComponents.get(key);
+            if (args.length > 0) {
+                component.task = args[0];
+            }
+        }
+        return this._childComponents.get(key);
+    }
 }
 
 class Task extends Component {
@@ -58,12 +73,28 @@ class Task extends Component {
         this.task = task;
         this.onToggle = onToggle;
         this.onDelete = onDelete;
+        this.state = {
+            isDeleteWarning: false,
+        };
     }
+
+    onDeleteClick = () => {
+        if (this.state.isDeleteWarning) {
+            this.onDelete();
+        } else {
+            this.state.isDeleteWarning = true;
+            this.update();
+        }
+    };
 
     render() {
         const labelStyle = this.task.completed
             ? "color: grey;"
             : "color: black;";
+
+        const deleteButtonStyle = this.state.isDeleteWarning
+            ? "margin-left: 10px; cursor: pointer; background-color: red;"
+            : "margin-left: 10px; cursor: pointer;";
 
         return createElement("li", { style: "list-style: none; margin-bottom: 5px;" }, [
             createElement("input",
@@ -72,7 +103,7 @@ class Task extends Component {
                 { change: this.onToggle }
             ),
             createElement("label", { style: labelStyle }, this.task.text),
-            createElement("button", { style: "margin-left: 10px; cursor: pointer;" }, "🗑️", { click: this.onDelete })
+            createElement("button", { style: deleteButtonStyle }, "🗑️", { click: this.onDeleteClick })
         ]);
     }
 }
@@ -97,13 +128,13 @@ class AddTask extends Component {
     };
 
     render() {
-        return createElement("div", { class: "add-todo", style: "margin-bottom: 20px;" }, [
+        return createElement("div", {class: "add-todo", style: "margin-bottom: 20px;"}, [
             createElement("input", {
                 type: "text",
                 placeholder: "Задание",
                 value: this.inputValue,
-            }, null, { input: this.onInputChange }),
-            createElement("button", { style: "margin-left: 5px;" }, "+", { click: this.onSubmit }),
+            }, null, {input: this.onInputChange}),
+            createElement("button", {style: "margin-left: 5px;"}, "+", {click: this.onSubmit}),
         ]);
     }
 }
@@ -111,27 +142,35 @@ class AddTask extends Component {
 class TodoList extends Component {
     constructor() {
         super();
+        const savedTasks = localStorage.getItem('todoTasks');
         this.state = {
-            tasks: [
-                { text: "Сделать домашку", completed: false },
-                { text: "Сделать практику", completed: true },
-                { text: "Пойти домой", completed: false }
+            tasks: savedTasks ? JSON.parse(savedTasks) : [
+                {text: "Сделать домашку", completed: false},
+                {text: "Сделать практику", completed: true},
+                {text: "Пойти домой", completed: false}
             ]
         };
     }
 
+    saveTasks() {
+        localStorage.setItem('todoTasks', JSON.stringify(this.state.tasks));
+    }
+
     onAddTask = (text) => {
-        this.state.tasks.push({ text, completed: false });
+        this.state.tasks.push({text, completed: false});
+        this.saveTasks();
         this.update();
     };
 
     onDeleteTask = (index) => {
         this.state.tasks.splice(index, 1);
+        this.saveTasks();
         this.update();
     };
 
     onToggleTask = (index) => {
         this.state.tasks[index].completed = !this.state.tasks[index].completed;
+        this.saveTasks();
         this.update();
     };
 
@@ -139,20 +178,20 @@ class TodoList extends Component {
         const addTaskNode = new AddTask(this.onAddTask).getDomNode();
 
         const taskNodes = this.state.tasks.map((task, index) => {
-            return new Task(
-                task,
+            const taskComponent = this.getChildComponent(`task-${index}`, Task, task,
                 () => this.onToggleTask(index),
                 () => this.onDeleteTask(index)
-            ).getDomNode();
+            );
+            return taskComponent.getDomNode();
         });
 
         return createElement("div", {
             class: "todo-list",
             style: "font-family: sans-serif; max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px;"
         }, [
-            createElement("h1", { style: "text-align: center;" }, "TODO List"),
+            createElement("h1", {style: "text-align: center;"}, "TODO List"),
             addTaskNode,
-            createElement("ul", { id: "todos", style: "padding: 0;" }, taskNodes),
+            createElement("ul", {id: "todos", style: "padding: 0;"}, taskNodes),
         ]);
     }
 }
