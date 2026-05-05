@@ -175,6 +175,7 @@ class TodoList extends Component {
     };
 
     render() {
+        this._childComponents.clear();
         const addTaskNode = new AddTask(this.onAddTask).getDomNode();
 
         const taskNodes = this.state.tasks.map((task, index) => {
