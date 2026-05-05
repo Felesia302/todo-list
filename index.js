@@ -3,7 +3,11 @@
 
     if (attributes) {
         Object.keys(attributes).forEach((key) => {
-            element.setAttribute(key, attributes[key]);
+            if (key === "style") {
+                element.style.cssText = attributes[key];
+            } else {
+                element.setAttribute(key, attributes[key]);
+            }
         });
     }
 
@@ -48,30 +52,77 @@ class Component {
     }
 }
 
+class Task extends Component {
+    constructor(task, onToggle, onDelete) {
+        super();
+        this.task = task;
+        this.onToggle = onToggle;
+        this.onDelete = onDelete;
+    }
+
+    render() {
+        const labelStyle = this.task.completed
+            ? "color: grey;"
+            : "color: black;";
+
+        return createElement("li", { style: "list-style: none; margin-bottom: 5px;" }, [
+            createElement("input",
+                { type: "checkbox", ...(this.task.completed ? { checked: "" } : {}) },
+                null,
+                { change: this.onToggle }
+            ),
+            createElement("label", { style: labelStyle }, this.task.text),
+            createElement("button", { style: "margin-left: 10px; cursor: pointer;" }, "🗑️", { click: this.onDelete })
+        ]);
+    }
+}
+
+class AddTask extends Component {
+    constructor(onAdd) {
+        super();
+        this.onAdd = onAdd;
+        this.inputValue = "";
+    }
+
+    onInputChange = (event) => {
+        this.inputValue = event.target.value;
+    };
+
+    onSubmit = () => {
+        if (this.inputValue.trim()) {
+            this.onAdd(this.inputValue);
+            this.inputValue = "";
+            this.update();
+        }
+    };
+
+    render() {
+        return createElement("div", { class: "add-todo", style: "margin-bottom: 20px;" }, [
+            createElement("input", {
+                type: "text",
+                placeholder: "Задание",
+                value: this.inputValue,
+            }, null, { input: this.onInputChange }),
+            createElement("button", { style: "margin-left: 5px;" }, "+", { click: this.onSubmit }),
+        ]);
+    }
+}
+
 class TodoList extends Component {
     constructor() {
         super();
         this.state = {
-            inputValue: "",
             tasks: [
-                {text: "Сделать домашку", completed: false},
-                {text: "Сделать практику", completed: false},
-                {text: "Пойти домой", completed: false}
+                { text: "Сделать домашку", completed: false },
+                { text: "Сделать практику", completed: true },
+                { text: "Пойти домой", completed: false }
             ]
         };
     }
 
-    onAddInputChange = (event) => {
-        this.state.inputValue = event.target.value;
-    };
-
-    onAddTask = () => {
-        if (this.state.inputValue.trim() !== "") {
-            this.state.tasks.push({text: this.state.inputValue, completed: false});
-            this.state.inputValue = "";
-            console.log("Новый стейт:", this.state.tasks);
-            this.update();
-        }
+    onAddTask = (text) => {
+        this.state.tasks.push({ text, completed: false });
+        this.update();
     };
 
     onDeleteTask = (index) => {
@@ -85,32 +136,23 @@ class TodoList extends Component {
     };
 
     render() {
-        const taskElements = this.state.tasks.map((task, index) => {
-            const labelStyle = task.completed ? "color: grey;" : "";
-            return createElement("li", {}, [
-                createElement("input",
-                    { type: "checkbox", ...(task.completed ? { checked: "" } : {}) },
-                    null,
-                    { change: () => this.onToggleTask(index) }
-                ),
-                createElement("label", { style: labelStyle }, task.text),
-                createElement("button", {}, "🗑️", { click: () => this.onDeleteTask(index) })
-            ]);
+        const addTaskNode = new AddTask(this.onAddTask).getDomNode();
+
+        const taskNodes = this.state.tasks.map((task, index) => {
+            return new Task(
+                task,
+                () => this.onToggleTask(index),
+                () => this.onDeleteTask(index)
+            ).getDomNode();
         });
 
-        return createElement("div", {class: "todo-list"}, [
-            createElement("h1", {}, "TODO List"),
-            createElement("div", {class: "add-todo"}, [
-                createElement("input", {
-                    id: "new-todo",
-                    type: "text",
-                    placeholder: "Задание",
-                    value: this.state.inputValue,
-                }, null, {input: this.onAddInputChange}),
-
-                createElement("button", {id: "add-btn"}, "+", {click: this.onAddTask}),
-            ]),
-            createElement("ul", {id: "todos"}, taskElements),
+        return createElement("div", {
+            class: "todo-list",
+            style: "font-family: sans-serif; max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px;"
+        }, [
+            createElement("h1", { style: "text-align: center;" }, "TODO List"),
+            addTaskNode,
+            createElement("ul", { id: "todos", style: "padding: 0;" }, taskNodes),
         ]);
     }
 }
