@@ -74,12 +74,27 @@ class TodoList extends Component {
         }
     };
 
+    onDeleteTask = (index) => {
+        this.state.tasks.splice(index, 1);
+        this.update();
+    };
+
+    onToggleTask = (index) => {
+        this.state.tasks[index].completed = !this.state.tasks[index].completed;
+        this.update();
+    };
+
     render() {
-        const taskElements = this.state.tasks.map(task => {
+        const taskElements = this.state.tasks.map((task, index) => {
+            const labelStyle = task.completed ? "color: grey;" : "";
             return createElement("li", {}, [
-                createElement("input", {type: "checkbox"}),
-                createElement("label", {}, task.text),
-                createElement("button", {}, "🗑️")
+                createElement("input",
+                    { type: "checkbox", ...(task.completed ? { checked: "" } : {}) },
+                    null,
+                    { change: () => this.onToggleTask(index) }
+                ),
+                createElement("label", { style: labelStyle }, task.text),
+                createElement("button", {}, "🗑️", { click: () => this.onDeleteTask(index) })
             ]);
         });
 
@@ -90,6 +105,7 @@ class TodoList extends Component {
                     id: "new-todo",
                     type: "text",
                     placeholder: "Задание",
+                    value: this.state.inputValue,
                 }, null, {input: this.onAddInputChange}),
 
                 createElement("button", {id: "add-btn"}, "+", {click: this.onAddTask}),
